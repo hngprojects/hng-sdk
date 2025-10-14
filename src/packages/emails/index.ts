@@ -1,1 +1,1 @@
-export { NotionMagicLinkEmail } from "./emails/notion-magic-link"
+export { WelcomeEmail } from "./emails/welcome-email";

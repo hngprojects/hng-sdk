@@ -1,3 +1,2 @@
-// UI Components
-export * from './components/Button';
-export * from './components/Card';
+export * from "./components/button";
+export * from "./lib/utils";

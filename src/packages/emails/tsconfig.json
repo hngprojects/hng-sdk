@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "../../../tsconfig.base.json",
   "display": "@hng-sdk/email",
-  "include": ["emails", "components", "index.ts"],
-  "exclude": ["node_modules", "dist"],
+  "include": ["emails/**/*", "index.ts"],
+  "exclude": ["node_modules", "dist", ".react-email"],
   "compilerOptions": {
     "lib": ["es2022", "DOM", "DOM.Iterable"],
     "module": "NodeNext",

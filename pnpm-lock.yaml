@@ -60,6 +60,9 @@ importers:
       '@react-email/components':
         specifier: 0.5.6
         version: 0.5.6(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@react-email/tailwind':
+        specifier: ^1.2.2
+        version: 1.2.2(react@19.1.0)
       react:
         specifier: ^19.0.0
         version: 19.1.0
@@ -79,6 +82,9 @@ importers:
       react-email:
         specifier: 4.3.0
         version: 4.3.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
   src/packages/hng-sdk:
     dependencies:
@@ -95,6 +101,9 @@ importers:
 
   src/packages/ui:
     dependencies:
+      '@radix-ui/react-slot':
+        specifier: ^1.2.3
+        version: 1.2.3(@types/react@19.2.2)(react@19.1.0)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -4378,6 +4387,12 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.0.10
 
+  '@radix-ui/react-compose-refs@1.1.2(@types/react@19.2.2)(react@19.1.0)':
+    dependencies:
+      react: 19.1.0
+    optionalDependencies:
+      '@types/react': 19.2.2
+
   '@radix-ui/react-context@1.1.2(@types/react@19.0.10)(react@19.0.0)':
     dependencies:
       react: 19.0.0
@@ -4561,6 +4576,13 @@ snapshots:
       react: 19.0.0
     optionalDependencies:
       '@types/react': 19.0.10
+
+  '@radix-ui/react-slot@1.2.3(@types/react@19.2.2)(react@19.1.0)':
+    dependencies:
+      '@radix-ui/react-compose-refs': 1.1.2(@types/react@19.2.2)(react@19.1.0)
+      react: 19.1.0
+    optionalDependencies:
+      '@types/react': 19.2.2
 
   '@radix-ui/react-tabs@1.1.13(@types/react-dom@19.0.4(@types/react@19.0.10))(@types/react@19.0.10)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
