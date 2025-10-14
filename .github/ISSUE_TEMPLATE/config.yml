@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/hngprojects/hng-sdk/tree/main
+    about: Check out our documentation for help
+  - name: 💬 GitHub Discussions
+    url: https://github.com/hngprojects/hng-sdk/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Contributing Guide
+    url: https://github.com/hngprojects/hng-sdk/blob/main/CONTRIBUTING.md
+    about: Learn how to contribute to HNG SDK
