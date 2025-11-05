@@ -41,8 +41,12 @@ jobs:
             CHANGED=$(find src/packages -maxdepth 1 -mindepth 1 -type d)
           fi
 
-          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -s .)
-          echo "matrix={\"package\":$PACKAGES}" >> $GITHUB_OUTPUT
+          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
+          MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+
+      - name: Print matrix output
+        run: echo "${{ steps.filter.outputs.matrix }}"
 
   run_tests:
     name: Run Lint, Test, and Build
