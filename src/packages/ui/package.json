@@ -25,6 +25,7 @@
     "build": "tsc && pnpm build:css",
     "build:css": "echo 'CSS build placeholder'",
     "dev": "tsc --watch",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf dist"
   },
   "devDependencies": {

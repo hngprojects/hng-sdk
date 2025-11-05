@@ -23,6 +23,7 @@
     "build:preview": "email build",
     "dev": "email dev",
     "export": "email export",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf dist"
   },
   "dependencies": {
