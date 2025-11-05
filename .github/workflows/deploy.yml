@@ -1,0 +1,131 @@
+name: Monorepo Package Deploy CI
+
+on:
+  push:
+    branches: ['dev']
+    paths:
+      - 'src/packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/*.yml'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  detect_changed_packages:
+    name: Detect Changed Packages
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed package directories
+        id: filter
+        run: |
+          # Detect changed files since the last commit on dev
+          CHANGED=$(git diff --name-only origin/dev...HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
+          echo "Changed paths:"
+          echo "$CHANGED"
+
+          # Build a JSON array for matrix usage
+          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -s .)
+          echo "matrix={\"package\":$PACKAGES}" >> $GITHUB_OUTPUT
+
+  publish_changed_packages:
+    name: Publish Changed Packages
+    needs: detect_changed_packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect_changed_packages.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js & pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@hng-sdk'
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get package info
+        id: pkg
+        working-directory: ${{ matrix.package }}
+        run: |
+          PKG_NAME=$(jq -r .name package.json)
+          PKG_VERSION=$(jq -r .version package.json)
+          echo "name=$PKG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
+          echo "Package: $PKG_NAME ($PKG_VERSION)"
+
+      - name: Determine latest published version
+        id: get_version
+        run: |
+          PKG_NAME="${{ steps.pkg.outputs.name }}"
+          VERSION=$(npm view "$PKG_NAME" version --registry=https://npm.pkg.github.com 2>/dev/null || echo "0.0.0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version
+        id: bump
+        working-directory: ${{ matrix.package }}
+        run: |
+          parse_version() {
+            IFS='.' read -r major minor patch <<< "$1"
+            [ -z "$major" ] && major=0 && minor=0 && patch=0
+            if [ "$patch" -lt 90 ]; then patch=$((patch+1))
+            else patch=0 && if [ "$minor" -lt 90 ]; then minor=$((minor+1)); else minor=0 && major=$((major+1)); fi
+            fi
+            echo "$major.$minor.$patch"
+          }
+
+          CURRENT="${{ steps.get_version.outputs.version }}"
+          NEW=$(parse_version "$CURRENT")
+
+          jq --arg v "$NEW" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
+          echo "new_version=$NEW" >> $GITHUB_OUTPUT
+          echo "Bumped version: $NEW"
+
+      - name: Commit version bump
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add ${{ matrix.package }}/package.json
+          git commit -m "chore(${ { matrix.package }}): bump to ${{ steps.bump.outputs.new_version }}" || echo "No changes to commit"
+          git push
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag version
+        run: |
+          PKG=$(basename ${{ matrix.package }})
+          TAG="${PKG}-v${{ steps.bump.outputs.new_version }}"
+          echo "Tagging $TAG"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Build package
+        working-directory: ${{ matrix.package }}
+        run: pnpm run build
+
+      - name: Publish to GitHub Packages
+        working-directory: ${{ matrix.package }}
+        run: pnpm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
