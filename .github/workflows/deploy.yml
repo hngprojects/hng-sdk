@@ -14,20 +14,24 @@ permissions:
   packages: write
 
 jobs:
-  detect_changed_packages:
-    name: Detect Changed Packages
+  detect_and_bump_versions:
+    name: Detect Changed Packages & Bump Versions
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.filter.outputs.matrix }}
-      has_changes: ${{ steps.filter.outputs.has_changes }}
+      matrix: ${{ steps.output_matrix.outputs.matrix }}
+      has_changes: ${{ steps.output_matrix.outputs.has_changes }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
       - name: Detect changed package directories
-        id: filter
+        id: detect
         run: |
           echo "Detecting changed packages since last commit..."
           git fetch --no-tags --prune --depth=2 origin dev
@@ -37,27 +41,72 @@ jobs:
           echo "$CHANGED"
 
           if [ -z "$CHANGED" ]; then
-            echo "No packages changed."
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "matrix={\"package\":[]}" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+          echo "CHANGED=$CHANGED" >> $GITHUB_ENV
+
+      - name: Bump versions sequentially
+        if: env.CHANGED != ''
+        run: |
+          parse_version() {
+            IFS='.' read -r major minor patch <<< "$1"
+            [ -z "$major" ] && major=0 && minor=0 && patch=0
+            if [ "$patch" -lt 90 ]; then patch=$((patch+1))
+            else patch=0 && if [ "$minor" -lt 90 ]; then minor=$((minor+1)); else minor=0 && major=$((major+1)); fi
+            fi
+            echo "$major.$minor.$patch"
+          }
+
+          for pkg in $CHANGED; do
+            echo "Processing $pkg..."
+            cd "$pkg"
+            PKG_NAME=$(jq -r .name package.json)
+            CURRENT_VERSION=$(jq -r .version package.json)
+            PUBLISHED_VERSION=$(npm view "$PKG_NAME" version --registry=https://npm.pkg.github.com 2>/dev/null || echo "0.0.0")
+
+            if [ "$CURRENT_VERSION" = "$PUBLISHED_VERSION" ]; then
+              NEW_VERSION=$(parse_version "$PUBLISHED_VERSION")
+              jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
+              echo "Bumped $PKG_NAME to $NEW_VERSION"
+            else
+              echo "$PKG_NAME is already ahead ($CURRENT_VERSION vs $PUBLISHED_VERSION)"
+            fi
+
+            cd - >/dev/null
+          done
+
+      - name: Commit and push version bumps
+        if: env.CHANGED != ''
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git config core.hooksPath /dev/null
+          git add src/packages/*/package.json
+          git commit -m "chore: bump versions for updated packages" || echo "No changes to commit"
+          git pull --rebase origin dev || echo "No rebase needed"
+          git push origin dev
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare matrix output
+        id: output_matrix
+        run: |
           PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
           MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
-      - name: Print matrix output
-        run: echo "${{ steps.filter.outputs.matrix }}"
-
-  publish_changed_packages:
-    name: Publish Changed Packages
-    needs: detect_changed_packages
-    if: needs.detect_changed_packages.outputs.has_changes == 'true'
+  publish_packages:
+    name: Publish Packages
+    needs: detect_and_bump_versions
+    if: needs.detect_and_bump_versions.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{ fromJson(needs.detect_changed_packages.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.detect_and_bump_versions.outputs.matrix) }}
       fail-fast: false
 
     steps:
@@ -78,78 +127,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Get package info
-        id: pkg
-        working-directory: ${{ matrix.package }}
-        run: |
-          PKG_NAME=$(jq -r .name package.json)
-          PKG_VERSION=$(jq -r .version package.json)
-          echo "name=$PKG_NAME" >> $GITHUB_OUTPUT
-          echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
-          echo "Detected package: $PKG_NAME@$PKG_VERSION"
-
-      - name: Determine latest published version
-        id: get_version
-        run: |
-          PKG_NAME="${{ steps.pkg.outputs.name }}"
-          PUBLISHED_VERSION=$(npm view "$PKG_NAME" version --registry=https://npm.pkg.github.com 2>/dev/null || echo "0.0.0")
-          echo "published_version=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Compare versions
-        id: compare
-        run: |
-          CURRENT="${{ steps.pkg.outputs.version }}"
-          PUBLISHED="${{ steps.get_version.outputs.published_version }}"
-          echo "Current version: $CURRENT"
-          echo "Published version: $PUBLISHED"
-
-          if [ "$CURRENT" = "$PUBLISHED" ]; then
-            echo "No new version detected, skipping publish."
-            echo "should_publish=false" >> $GITHUB_OUTPUT
-          else
-            echo "Package version differs — will publish."
-            echo "should_publish=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump version if necessary
-        id: bump
-        if: steps.compare.outputs.should_publish == 'false'
-        working-directory: ${{ matrix.package }}
-        run: |
-          parse_version() {
-            IFS='.' read -r major minor patch <<< "$1"
-            [ -z "$major" ] && major=0 && minor=0 && patch=0
-            if [ "$patch" -lt 90 ]; then patch=$((patch+1))
-            else patch=0 && if [ "$minor" -lt 90 ]; then minor=$((minor+1)); else minor=0 && major=$((major+1)); fi
-            fi
-            echo "$major.$minor.$patch"
-          }
-
-          NEW=$(parse_version "${{ steps.get_version.outputs.published_version }}")
-          jq --arg v "$NEW" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
-          echo "new_version=$NEW" >> $GITHUB_OUTPUT
-          echo "Bumped version: $NEW"
-
-      - name: Commit version bump
-        if: steps.compare.outputs.should_publish == 'false'
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add ${{ matrix.package }}/package.json
-          git commit -m "chore(${{ matrix.package }}): bump to ${{ steps.bump.outputs.new_version }}" || echo "No changes to commit"
-          git push
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build package
-        if: steps.compare.outputs.should_publish == 'true' || steps.bump.outputs.new_version != ''
         working-directory: ${{ matrix.package }}
         run: pnpm run build
 
       - name: Publish to GitHub Packages
-        if: steps.compare.outputs.should_publish == 'true' || steps.bump.outputs.new_version != ''
         working-directory: ${{ matrix.package }}
         run: pnpm publish --access public
         env:
