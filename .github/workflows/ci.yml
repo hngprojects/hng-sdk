@@ -1,0 +1,81 @@
+name: Monorepo CI
+
+on:
+  pull_request:
+    branches: ['dev', 'main']
+    paths:
+      - 'src/packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/*.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  detect_changed_packages:
+    name: Detect Changed Packages
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed package directories
+        id: filter
+        run: |
+          BASE=${{ github.base_ref }}
+          HEAD=${{ github.head_ref }}
+          echo "Comparing $BASE...$HEAD"
+
+          CHANGED=$(git fetch origin $BASE && git diff --name-only origin/$BASE...HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
+          echo "Changed packages:"
+          echo "$CHANGED"
+
+          if [ -z "$CHANGED" ]; then
+            echo "No package changes detected, defaulting to all packages."
+            CHANGED=$(find src/packages -maxdepth 1 -mindepth 1 -type d)
+          fi
+
+          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
+          MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+
+      - name: Print matrix output
+        run: echo "${{ steps.filter.outputs.matrix }}"
+
+  run_tests:
+    name: Run Lint, Test, and Build
+    needs: detect_changed_packages
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect_changed_packages.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        working-directory: ${{ matrix.package }}
+        run: pnpm run test
+
+      - name: Build package
+        working-directory: ${{ matrix.package }}
+        run: pnpm run build
