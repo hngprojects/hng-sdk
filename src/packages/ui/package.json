@@ -36,9 +36,9 @@
     "typescript": "^5.7.2"
   },
   "keywords": [
+    "components",
     "react",
     "ui",
-    "components",
     "hng",
     "sdk"
   ],
