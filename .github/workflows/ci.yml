@@ -74,7 +74,7 @@ jobs:
 
       - name: Run tests
         working-directory: ${{ matrix.package }}
-        run: pnpm run test --if-present
+        run: pnpm run test
 
       - name: Build package
         working-directory: ${{ matrix.package }}
