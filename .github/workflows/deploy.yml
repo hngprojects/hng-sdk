@@ -47,13 +47,10 @@ jobs:
             exit 0
           fi
 
-          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
-          MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
-
-          echo "matrix<<EOF" >> $GITHUB_OUTPUT
-          echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          echo "has_changes=true" >> $GITHUB_OUTPUT
+          # Save CHANGED for later steps
+          echo "CHANGED<<EOF" >> $GITHUB_ENV
+          echo "$CHANGED" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Bump versions sequentially
         if: env.CHANGED != ''
@@ -103,7 +100,9 @@ jobs:
         run: |
           PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
           MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
-          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "has_changes=true" >> $GITHUB_OUTPUT
 
   publish_packages:
@@ -111,32 +110,3 @@ jobs:
     needs: detect_and_bump_versions
     if: needs.detect_and_bump_versions.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.detect_and_bump_versions.outputs.matrix) }}
-      fail-fast: false
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          registry-url: 'https://npm.pkg.github.com'
-          scope: '@hng-sdk'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build package
-        run: pnpm --filter ./${{ matrix.package }}... run build
-
-      - name: Publish to GitHub Packages
-        run: pnpm --filter ./${{ matrix.package }}... run publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
