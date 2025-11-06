@@ -1,4 +1,4 @@
-name: Monorepo Package Deploy CI
+name: Monorepo Package Deploy CD
 
 on:
   push:
@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.filter.outputs.matrix }}
+      has_changes: ${{ steps.filter.outputs.has_changes }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,18 +29,29 @@ jobs:
       - name: Detect changed package directories
         id: filter
         run: |
-          # Detect changed files since the last commit on dev
+          echo "Detecting changes since last commit on dev..."
+          git fetch origin dev
+
           CHANGED=$(git diff --name-only origin/dev...HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
-          echo "Changed paths:"
+          echo "Changed packages:"
           echo "$CHANGED"
 
-          # Build a JSON array for matrix usage
-          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -s .)
-          echo "matrix={\"package\":$PACKAGES}" >> $GITHUB_OUTPUT
+          if [ -z "$CHANGED" ]; then
+            echo "No packages changed."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "matrix={\"package\":[]}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
+          MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
+          echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "has_changes=true" >> $GITHUB_OUTPUT
 
   publish_changed_packages:
     name: Publish Changed Packages
     needs: detect_changed_packages
+    if: needs.detect_changed_packages.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.detect_changed_packages.outputs.matrix) }}
@@ -71,19 +83,36 @@ jobs:
           PKG_VERSION=$(jq -r .version package.json)
           echo "name=$PKG_NAME" >> $GITHUB_OUTPUT
           echo "version=$PKG_VERSION" >> $GITHUB_OUTPUT
-          echo "Package: $PKG_NAME ($PKG_VERSION)"
+          echo "Detected package: $PKG_NAME@$PKG_VERSION"
 
       - name: Determine latest published version
         id: get_version
         run: |
           PKG_NAME="${{ steps.pkg.outputs.name }}"
-          VERSION=$(npm view "$PKG_NAME" version --registry=https://npm.pkg.github.com 2>/dev/null || echo "0.0.0")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          PUBLISHED_VERSION=$(npm view "$PKG_NAME" version --registry=https://npm.pkg.github.com 2>/dev/null || echo "0.0.0")
+          echo "published_version=$PUBLISHED_VERSION" >> $GITHUB_OUTPUT
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bump version
+      - name: Compare versions
+        id: compare
+        run: |
+          CURRENT="${{ steps.pkg.outputs.version }}"
+          PUBLISHED="${{ steps.get_version.outputs.published_version }}"
+          echo "Current version: $CURRENT"
+          echo "Published version: $PUBLISHED"
+
+          if [ "$CURRENT" = "$PUBLISHED" ]; then
+            echo "No new version detected, skipping publish."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          else
+            echo "Package version differs — will publish."
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version if necessary
         id: bump
+        if: steps.compare.outputs.should_publish == 'false'
         working-directory: ${{ matrix.package }}
         run: |
           parse_version() {
@@ -95,36 +124,29 @@ jobs:
             echo "$major.$minor.$patch"
           }
 
-          CURRENT="${{ steps.get_version.outputs.version }}"
-          NEW=$(parse_version "$CURRENT")
-
+          NEW=$(parse_version "${{ steps.get_version.outputs.published_version }}")
           jq --arg v "$NEW" '.version = $v' package.json > package.tmp.json && mv package.tmp.json package.json
           echo "new_version=$NEW" >> $GITHUB_OUTPUT
           echo "Bumped version: $NEW"
 
       - name: Commit version bump
+        if: steps.compare.outputs.should_publish == 'false'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add ${{ matrix.package }}/package.json
-          git commit -m "chore(${ { matrix.package }}): bump to ${{ steps.bump.outputs.new_version }}" || echo "No changes to commit"
+          git commit -m "chore(${{ matrix.package }}): bump to ${{ steps.bump.outputs.new_version }}" || echo "No changes to commit"
           git push
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag version
-        run: |
-          PKG=$(basename ${{ matrix.package }})
-          TAG="${PKG}-v${{ steps.bump.outputs.new_version }}"
-          echo "Tagging $TAG"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
-
       - name: Build package
+        if: steps.compare.outputs.should_publish == 'true' || steps.bump.outputs.new_version != ''
         working-directory: ${{ matrix.package }}
         run: pnpm run build
 
       - name: Publish to GitHub Packages
+        if: steps.compare.outputs.should_publish == 'true' || steps.bump.outputs.new_version != ''
         working-directory: ${{ matrix.package }}
         run: pnpm publish --access public
         env:
