@@ -29,10 +29,10 @@ jobs:
       - name: Detect changed package directories
         id: filter
         run: |
-          echo "Detecting changes since last commit on dev..."
-          git fetch origin dev
+          echo "Detecting changed packages since last commit..."
+          git fetch --no-tags --prune --depth=2 origin dev
 
-          CHANGED=$(git diff --name-only origin/dev...HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
+          CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
           echo "Changed packages:"
           echo "$CHANGED"
 
@@ -47,6 +47,9 @@ jobs:
           MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
           echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
           echo "has_changes=true" >> $GITHUB_OUTPUT
+
+      - name: Print matrix output
+        run: echo "${{ steps.filter.outputs.matrix }}"
 
   publish_changed_packages:
     name: Publish Changed Packages
