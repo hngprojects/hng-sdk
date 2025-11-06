@@ -24,8 +24,8 @@
   "scripts": {
     "build": "tsc && pnpm build:css",
     "dev": "tsc --watch",
-    "build:css": "echo 'CSS build placeholder'",
     "test": "echo 'No tests yet'; exit 0",
+    "build:css": "echo 'CSS build placeholder'",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
