@@ -23,8 +23,8 @@
   },
   "scripts": {
     "build:css": "echo 'CSS build placeholder'",
-    "build": "tsc && pnpm build:css",
     "dev": "tsc --watch",
+    "build": "tsc && pnpm build:css",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"
   },

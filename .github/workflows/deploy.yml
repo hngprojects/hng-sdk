@@ -143,7 +143,7 @@ jobs:
           echo "Publishing $NAME"
 
       - name: Build package
-        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" run build --if-present
+        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" run build
 
       - name: Publish to GitHub Packages
         run: pnpm --filter "${{ steps.pkgname.outputs.name }}" publish --access public
