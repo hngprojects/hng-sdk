@@ -133,15 +133,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Print current directory
-        run: echo ${{ matrix.package }}
-
       - name: Build package
-        working-directory: ${{ matrix.package }}
-        run: pnpm run build
+        run: pnpm --filter ./${{ matrix.package }}... run build
 
       - name: Publish to GitHub Packages
-        working-directory: ${{ matrix.package }}
-        run: pnpm publish --access public
+        run: pnpm --filter ./${{ matrix.package }}... run publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

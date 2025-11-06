@@ -22,8 +22,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc && pnpm build:css",
     "build:css": "echo 'CSS build placeholder'",
+    "build": "tsc && pnpm build:css",
     "dev": "tsc --watch",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"
