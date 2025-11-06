@@ -1,6 +1,6 @@
 {
   "name": "@hng-sdk/email",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "private": false,
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -20,8 +20,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "export": "email export",
     "dev": "email dev",
+    "export": "email export",
     "build:preview": "email build",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"

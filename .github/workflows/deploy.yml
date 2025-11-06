@@ -146,6 +146,6 @@ jobs:
         run: pnpm --filter "${{ steps.pkgname.outputs.name }}" run build
 
       - name: Publish to GitHub Packages
-        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" publish --access public
+        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
