@@ -5,8 +5,8 @@
   "description": "HNG SDK Monorepo - Collection of utilities and tools",
   "scripts": {
     "build": "pnpm -r --filter './src/packages/**' run build",
-    "clean": "pnpm -r --filter './src/packages/**' run clean",
     "dev": "pnpm -r --filter './src/packages/**' run dev",
+    "clean": "pnpm -r --filter './src/packages/**' run clean",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepare": "husky"
   },

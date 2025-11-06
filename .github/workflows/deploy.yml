@@ -41,13 +41,19 @@ jobs:
           echo "$CHANGED"
 
           if [ -z "$CHANGED" ]; then
+            echo "No packages changed."
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "matrix={\"package\":[]}" >> $GITHUB_OUTPUT
             exit 0
           fi
 
+          PACKAGES=$(echo "$CHANGED" | jq -R . | jq -cs .)
+          MATRIX_JSON=$(jq -nc --argjson pkgs "$PACKAGES" '{"package": $pkgs}')
+
+          echo "matrix<<EOF" >> $GITHUB_OUTPUT
+          echo "$MATRIX_JSON" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           echo "has_changes=true" >> $GITHUB_OUTPUT
-          echo "CHANGED=$CHANGED" >> $GITHUB_ENV
 
       - name: Bump versions sequentially
         if: env.CHANGED != ''

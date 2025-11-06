@@ -21,8 +21,8 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
     "dev": "tsc --watch",
+    "build": "tsc",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"
   },
