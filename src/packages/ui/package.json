@@ -39,8 +39,8 @@
     "components",
     "hng",
     "react",
-    "ui",
-    "sdk"
+    "sdk",
+    "ui"
   ],
   "license": "ISC",
   "dependencies": {

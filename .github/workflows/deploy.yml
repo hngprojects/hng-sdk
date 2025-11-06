@@ -110,3 +110,42 @@ jobs:
     needs: detect_and_bump_versions
     if: needs.detect_and_bump_versions.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect_and_bump_versions.outputs.matrix) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install jq and pnpm
+        run: |
+          sudo apt-get install -y jq
+          npm install -g pnpm
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@hng-sdk'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get package name
+        id: pkgname
+        working-directory: ${{ matrix.package }}
+        run: |
+          NAME=$(jq -r .name package.json)
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "Publishing $NAME"
+
+      - name: Build package
+        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" run build --if-present
+
+      - name: Publish to GitHub Packages
+        run: pnpm --filter "${{ steps.pkgname.outputs.name }}" publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

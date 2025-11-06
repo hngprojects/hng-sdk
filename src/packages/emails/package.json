@@ -21,8 +21,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "email dev",
-    "build:preview": "email build",
     "export": "email export",
+    "build:preview": "email build",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"
   },
