@@ -1,6 +1,6 @@
 {
   "name": "@hng-sdk/typeorm-utils",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "TypeORM utilities and helpers for HNG SDK",
   "author": "HNG",
   "private": true,

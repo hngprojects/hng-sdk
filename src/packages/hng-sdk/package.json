@@ -22,7 +22,7 @@
   },
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc",
+    "build": "tsc --noEmit",
     "test": "echo 'No tests yet'; exit 0",
     "clean": "rm -rf dist"
   },
