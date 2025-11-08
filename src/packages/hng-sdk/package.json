@@ -1,6 +1,6 @@
 {
   "name": "hng-sdk",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "HNG SDK - Monorepo base package",
   "private": false,
   "main": "./dist/index.js",
@@ -27,8 +27,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@hng-sdk/email": "workspace:*",
-    "@hng-sdk/ui": "workspace:*"
+    "@hng-sdk/email": "^0.0.0",
+    "@hng-sdk/ui": "^0.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

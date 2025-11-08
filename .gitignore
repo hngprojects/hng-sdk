@@ -4,3 +4,4 @@ build
 .env
 .claude
 .react-email
+.DS_Store
