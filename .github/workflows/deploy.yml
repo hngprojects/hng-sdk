@@ -36,7 +36,15 @@ jobs:
           echo "Detecting changed packages since last commit..."
           git fetch --no-tags --prune --depth=2 origin dev
 
-          CHANGED=$(git diff --name-only HEAD^ HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
+          CHANGED=$(git diff --name-only HEAD^ HEAD \
+            | grep '^src/packages/' \
+            | cut -d'/' -f1-3 \
+            | sort -u \
+            | while read dir; do
+                if [ -d "$dir" ]; then
+                  echo "$dir"
+                fi
+              done)
           echo "Changed packages:"
           echo "$CHANGED"
 
@@ -65,6 +73,11 @@ jobs:
           }
 
           for pkg in $CHANGED; do
+            if [ ! -d "$pkg" ]; then
+              echo "Skipping deleted package: $pkg"
+              continue
+            fi
+
             echo "Processing $pkg..."
             cd "$pkg"
             PKG_NAME=$(jq -r .name package.json)
@@ -78,7 +91,6 @@ jobs:
             else
               echo "$PKG_NAME is already ahead ($CURRENT_VERSION vs $PUBLISHED_VERSION)"
             fi
-
             cd - >/dev/null
           done
 

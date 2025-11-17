@@ -32,7 +32,15 @@ jobs:
           HEAD=${{ github.head_ref }}
           echo "Comparing $BASE...$HEAD"
 
-          CHANGED=$(git fetch origin $BASE && git diff --name-only origin/$BASE...HEAD | grep '^src/packages/' | cut -d'/' -f1-3 | sort -u)
+          CHANGED=$(git diff --name-only HEAD^ HEAD \
+            | grep '^src/packages/' \
+            | cut -d'/' -f1-3 \
+            | sort -u \
+            | while read dir; do
+                if [ -d "$dir" ]; then
+                  echo "$dir"
+                fi
+              done)
           echo "Changed packages:"
           echo "$CHANGED"
 
