@@ -1,12 +1,19 @@
 {
   "name": "@hng-sdk/orm",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "ORM utilities and helpers for HNG SDK",
   "author": "HNG",
   "private": true,
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
     "dev": "nest start --watch",
     "build": "nest build",
