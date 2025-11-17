@@ -1,7 +1,7 @@
 {
   "name": "@hng-sdk/orm",
   "version": "0.0.0",
-  "description": "TypeORM utilities and helpers for HNG SDK",
+  "description": "ORM utilities and helpers for HNG SDK",
   "author": "HNG",
   "private": true,
   "license": "MIT",
