@@ -18,6 +18,7 @@
     "test:cov": "jest --coverage"
   },
   "files": [
+    "src",
     "dist"
   ],
   "publishConfig": {
