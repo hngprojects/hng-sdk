@@ -1,9 +1,9 @@
 {
   "name": "@hng-sdk/orm",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "description": "ORM utilities and helpers for HNG SDK",
   "author": "HNG",
-  "private": true,
+  "private": false,
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
