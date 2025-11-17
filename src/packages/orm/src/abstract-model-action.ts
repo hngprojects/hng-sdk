@@ -6,13 +6,13 @@ import {
   ObjectLiteral,
   Repository,
 } from 'typeorm';
-import { GetRecordOptions } from './options/get-record-generic';
-import { ListRecordGeneric } from './options/list-record-generic';
-import { FindRecordGeneric } from './options/find-record-generic';
-import { CreateRecordGeneric } from './options/create-record-generic';
-import { DeleteRecordGeneric } from './options/delete-record-generic';
-import { UpdateRecordGeneric } from './options/update-record-generic';
-import { SaveRecordGeneric } from './options/save-record-generic';
+import { GetRecordOptions } from './typeorm/options/get-record-generic';
+import { ListRecordGeneric } from './typeorm/options/list-record-generic';
+import { FindRecordGeneric } from './typeorm/options/find-record-generic';
+import { CreateRecordGeneric } from './typeorm/options/create-record-generic';
+import { DeleteRecordGeneric } from './typeorm/options/delete-record-generic';
+import { UpdateRecordGeneric } from './typeorm/options/update-record-generic';
+import { SaveRecordGeneric } from './typeorm/options/save-record-generic';
 import {
   computePaginationMeta,
   PaginationMeta,

@@ -1,6 +1,6 @@
-# @hng-sdk/typeorm-utils
+# @hng-sdk/orm
 
-A powerful TypeORM utilities package providing abstract model actions and helpers for building scalable NestJS applications with TypeORM.
+A powerful ORM utilities package providing abstract model actions and helpers for building scalable NestJS applications with TypeORM and Prisma.
 
 ## Table of Contents
 
@@ -24,11 +24,11 @@ A powerful TypeORM utilities package providing abstract model actions and helper
 ## Installation
 
 ```bash
-npm install @hng-sdk/typeorm-utils
+npm install @hng-sdk/orm
 # or
-pnpm add @hng-sdk/typeorm-utils
+pnpm add @hng-sdk/orm
 # or
-yarn add @hng-sdk/typeorm-utils
+yarn add @hng-sdk/orm
 ```
 
 ## Quick Start
@@ -42,7 +42,7 @@ Model actions are injectable services that extend `AbstractModelAction` for spec
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AbstractModelAction } from '@hng-sdk/typeorm-utils';
+import { AbstractModelAction } from '@hng-sdk/orm';
 import { User, Course } from './entities';
 
 @Injectable()
@@ -68,7 +68,7 @@ export class CourseModelAction extends AbstractModelAction<Course> {
   async findPublishedCourses() {
     return this.list({
       filterRecordOptions: { is_published: true },
-      order: { created_at: 'DESC' }
+      order: { created_at: 'DESC' },
     });
   }
 }
@@ -85,15 +85,9 @@ import { Course, User } from './entities';
 import { CoursesService } from './services/courses.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Course, User])
-  ],
-  providers: [
-    CourseModelAction,
-    UserModelAction,
-    CoursesService
-  ],
-  exports: [CourseModelAction, UserModelAction]
+  imports: [TypeOrmModule.forFeature([Course, User])],
+  providers: [CourseModelAction, UserModelAction, CoursesService],
+  exports: [CourseModelAction, UserModelAction],
 })
 export class CoursesModule {}
 ```
@@ -103,7 +97,10 @@ export class CoursesModule {}
 ```typescript
 // src/courses/services/courses.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CourseModelAction, UserModelAction } from '../../actions/model-actions';
+import {
+  CourseModelAction,
+  UserModelAction,
+} from '../../actions/model-actions';
 import { DataSource } from 'typeorm';
 
 @Injectable()
@@ -119,19 +116,19 @@ export class CoursesService {
       filterRecordOptions: { is_published: true },
       paginationPayload: { page, limit },
       relations: { category: true },
-      order: { created_at: 'DESC' }
+      order: { created_at: 'DESC' },
     });
 
     return {
       courses: payload,
-      meta: paginationMeta
+      meta: paginationMeta,
     };
   }
 
   async findOne(id: string) {
     const course = await this.courseModelAction.get({
       identifierOptions: { id },
-      relations: { category: true, modules: true }
+      relations: { category: true, modules: true },
     });
 
     if (!course) {
@@ -145,7 +142,7 @@ export class CoursesService {
     // Using transactions for atomic operations
     return await this.dataSource.transaction(async (manager) => {
       const user = await this.userModelAction.get({
-        identifierOptions: { id: userId }
+        identifierOptions: { id: userId },
       });
 
       if (!user) {
@@ -157,12 +154,12 @@ export class CoursesService {
           ...createCourseDto,
           creator_id: userId,
           creator_name: user.fullName,
-          is_published: false
+          is_published: false,
         },
         transactionOptions: {
           useTransaction: true,
-          transaction: manager
-        }
+          transaction: manager,
+        },
       });
 
       return course;
@@ -172,7 +169,7 @@ export class CoursesService {
   async update(id: string, updateCourseDto: UpdateCourseDto) {
     return await this.dataSource.transaction(async (manager) => {
       const existingCourse = await this.courseModelAction.get({
-        identifierOptions: { id }
+        identifierOptions: { id },
       });
 
       if (!existingCourse) {
@@ -184,8 +181,8 @@ export class CoursesService {
         updatePayload: updateCourseDto,
         transactionOptions: {
           useTransaction: true,
-          transaction: manager
-        }
+          transaction: manager,
+        },
       });
 
       return updatedCourse;
@@ -195,7 +192,7 @@ export class CoursesService {
   async remove(id: string) {
     return await this.dataSource.transaction(async (manager) => {
       const course = await this.courseModelAction.get({
-        identifierOptions: { id }
+        identifierOptions: { id },
       });
 
       if (!course) {
@@ -206,8 +203,8 @@ export class CoursesService {
         identifierOptions: { id },
         transactionOptions: {
           useTransaction: true,
-          transaction: manager
-        }
+          transaction: manager,
+        },
       });
 
       return { message: 'Course deleted successfully' };
@@ -223,10 +220,12 @@ export class CoursesService {
 The `AbstractModelAction` is a generic base class that provides standard CRUD operations for TypeORM entities.
 
 **Constructor Parameters:**
+
 - `repository`: TypeORM Repository instance
 - `entityClass`: The entity class (for type reference)
 
 **Type Parameter:**
+
 - `T`: The entity type (e.g., `User`, `Course`)
 
 ### Generic Options
@@ -252,16 +251,17 @@ const course = await courseModelAction.create({
     title: 'Introduction to TypeScript',
     description: 'Learn TypeScript from scratch',
     price: 49.99,
-    is_published: false
+    is_published: false,
   },
   transactionOptions: {
     useTransaction: true,
-    transaction: manager // Optional: EntityManager from transaction
-  }
+    transaction: manager, // Optional: EntityManager from transaction
+  },
 });
 ```
 
 **Parameters:**
+
 - `createPayload`: Partial entity data to create
 - `transactionOptions` (optional):
   - `useTransaction`: Boolean to enable transaction
@@ -280,16 +280,17 @@ const updatedCourse = await courseModelAction.update({
   identifierOptions: { id: 'course-uuid' },
   updatePayload: {
     title: 'Advanced TypeScript',
-    price: 99.99
+    price: 99.99,
   },
   transactionOptions: {
     useTransaction: true,
-    transaction: manager
-  }
+    transaction: manager,
+  },
 });
 ```
 
 **Parameters:**
+
 - `identifierOptions`: Criteria to find the record (e.g., `{ id: '...' }`)
 - `updatePayload`: Partial entity data to update
 - `transactionOptions` (optional): Transaction configuration
@@ -308,16 +309,17 @@ const course = await courseModelAction.get({
   relations: {
     category: true,
     modules: {
-      lessons: true
-    }
+      lessons: true,
+    },
   },
   queryOptions: {
-    select: ['id', 'title', 'description', 'price']
-  }
+    select: ['id', 'title', 'description', 'price'],
+  },
 });
 ```
 
 **Parameters:**
+
 - `identifierOptions`: Criteria to find the record
 - `relations` (optional): Relations to load
 - `queryOptions` (optional): Additional query options (select, cache, etc.)
@@ -334,15 +336,16 @@ Finds records matching criteria.
 const courses = await courseModelAction.find({
   filterRecordOptions: {
     is_published: true,
-    price: LessThan(100)
+    price: LessThan(100),
   },
   relations: { category: true },
   order: { created_at: 'DESC' },
-  limit: 5
+  limit: 5,
 });
 ```
 
 **Parameters:**
+
 - `filterRecordOptions`: Where conditions
 - `relations` (optional): Relations to load
 - `order` (optional): Sorting configuration
@@ -360,14 +363,14 @@ Lists records with pagination support.
 const { payload, paginationMeta } = await courseModelAction.list({
   filterRecordOptions: {
     is_published: true,
-    category_id: 'category-uuid'
+    category_id: 'category-uuid',
   },
   paginationPayload: {
     page: 1,
-    limit: 20
+    limit: 20,
   },
   relations: { category: true, creator: true },
-  order: { enrolled_count: 'DESC' }
+  order: { enrolled_count: 'DESC' },
 });
 
 console.log(paginationMeta);
@@ -382,12 +385,14 @@ console.log(paginationMeta);
 ```
 
 **Parameters:**
+
 - `filterRecordOptions` (optional): Where conditions (can be array for OR conditions)
 - `paginationPayload` (optional): Pagination config `{ page, limit }`
 - `relations` (optional): Relations to load
 - `order` (optional): Sorting configuration
 
 **Returns:** Object with:
+
 - `payload`: Array of entities
 - `paginationMeta`: Pagination information
 
@@ -402,12 +407,13 @@ await courseModelAction.delete({
   identifierOptions: { id: 'course-uuid' },
   transactionOptions: {
     useTransaction: true,
-    transaction: manager
-  }
+    transaction: manager,
+  },
 });
 ```
 
 **Parameters:**
+
 - `identifierOptions`: Criteria to find the record
 - `transactionOptions` (optional): Transaction configuration
 
@@ -422,18 +428,19 @@ Saves one or more entities (creates or updates).
 ```typescript
 const course = courseModelAction.repository.create({
   title: 'New Course',
-  description: 'Description'
+  description: 'Description',
 });
 
 const savedCourse = await courseModelAction.save(course, {
   transactionOptions: {
     useTransaction: true,
-    transaction: manager
-  }
+    transaction: manager,
+  },
 });
 ```
 
 **Parameters:**
+
 - `entity`: Single entity or array of entities
 - `options` (optional): Save options including transaction config
 
@@ -466,7 +473,8 @@ export class CourseModelAction extends AbstractModelAction<Course> {
     limit: number;
     seed: number;
   }) {
-    const { filterRecordOptions, userRegion, userCountry, page, limit, seed } = params;
+    const { filterRecordOptions, userRegion, userCountry, page, limit, seed } =
+      params;
 
     const normalizedSeed = (seed % 1000000) / 1000000;
     await this.repository.query(`SELECT setseed($1)`, [normalizedSeed]);
@@ -490,7 +498,7 @@ export class CourseModelAction extends AbstractModelAction<Course> {
           WHEN course.region = :userRegion THEN 3
           ELSE 4
         END`,
-        'priority'
+        'priority',
       );
       queryBuilder.setParameter('userCountry', userCountry);
       queryBuilder.setParameter('userRegion', userRegion);
@@ -512,8 +520,8 @@ export class CourseModelAction extends AbstractModelAction<Course> {
         total,
         total_pages: Math.ceil(total / limit),
         has_next: page < Math.ceil(total / limit),
-        has_previous: page > 1
-      }
+        has_previous: page > 1,
+      },
     };
   }
 }
@@ -528,9 +536,9 @@ const courses = await courseModelAction.list({
   filterRecordOptions: [
     { title: ILike('%typescript%') },
     { description: ILike('%typescript%') },
-    { about: ILike('%typescript%') }
+    { about: ILike('%typescript%') },
   ],
-  paginationPayload: { page: 1, limit: 10 }
+  paginationPayload: { page: 1, limit: 10 },
 });
 ```
 
@@ -545,14 +553,14 @@ const course = await courseModelAction.get({
     modules: {
       lessons: {
         user_progresses: {
-          user_course: true
-        }
+          user_course: true,
+        },
       },
-      assessments: true
+      assessments: true,
     },
     category: true,
-    reviews: true
-  }
+    reviews: true,
+  },
 });
 ```
 
@@ -629,9 +637,7 @@ export class UserModelAction extends AbstractModelAction<User> {
 // ✅ Good
 @Injectable()
 export class CoursesService {
-  constructor(
-    private readonly courseModelAction: CourseModelAction
-  ) {}
+  constructor(private readonly courseModelAction: CourseModelAction) {}
 
   async findCourse(id: string) {
     return this.courseModelAction.get({ identifierOptions: { id } });
@@ -643,7 +649,7 @@ export class CoursesService {
 export class CoursesService {
   constructor(
     @InjectRepository(Course)
-    private readonly courseRepository: Repository<Course>
+    private readonly courseRepository: Repository<Course>,
   ) {}
 }
 ```
@@ -713,13 +719,13 @@ async findAll() {
 const user = await this.userModelAction.get({
   identifierOptions: { id: userId },
   queryOptions: {
-    select: ['id', 'fullName', 'email']
-  }
+    select: ['id', 'fullName', 'email'],
+  },
 });
 
 // ❌ Bad - Loading all fields when not needed
 const user = await this.userModelAction.get({
-  identifierOptions: { id: userId }
+  identifierOptions: { id: userId },
 });
 ```
 
@@ -729,7 +735,7 @@ const user = await this.userModelAction.get({
 // ✅ Good - Only load needed relations
 const course = await this.courseModelAction.get({
   identifierOptions: { id },
-  relations: { category: true } // Only load category
+  relations: { category: true }, // Only load category
 });
 
 // ❌ Bad - Loading unnecessary nested relations
@@ -738,9 +744,62 @@ const course = await this.courseModelAction.get({
   relations: {
     category: true,
     modules: { lessons: { materials: true } },
-    reviews: { user: true }
-  }
+    reviews: { user: true },
+  },
 });
+```
+
+## Using the Prisma Dal
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { PrismaBaseDal } from '@hng-sdk/orm';
+import PrismaService from 'src/services/prisma/prisma.service';
+
+@Injectable()
+export class UserDal extends PrismaBaseDal<PrismaService, 'user'> {
+  constructor(readonly prisma: PrismaService) {
+    super(prisma, 'user');
+  }
+}
+
+@Injectable()
+export class UserService {
+  constructor(private readonly userDal: UserDal) {}
+
+  async getUser(id: string) {
+    return this.userDal.get({ id });
+  }
+
+  async createUser(payload: CreatePayload) {
+    return this.userDal.create(payload);
+  }
+
+  async updateUser(id: string, payload: UpdatePayload) {
+    return this.userDal.update({ id }, payload);
+  }
+
+  async deleteUser(id: string) {
+    return this.userDal.delete({ id });
+  }
+
+  async getPaginatedUsers(filter: QueryDto) {
+    const { page, limit, ...query } = filter;
+    const { data, meta } = await this.userDal.paginate({
+      where: query,
+      orderBy: { createdAt: 'desc' },
+      page,
+      limit,
+      search: query.search,
+      searchFields: ['firstName', 'lastName', 'email'],
+    });
+  }
+
+  async getAllUsers(filter: FilterDto) {
+    const users = await this.userDal.list(filter);
+    return users;
+  }
+}
 ```
 
 ## License
