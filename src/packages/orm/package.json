@@ -1,6 +1,6 @@
 {
   "name": "@hng-sdk/orm",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "ORM utilities and helpers for HNG SDK",
   "author": "HNG",
   "private": true,
