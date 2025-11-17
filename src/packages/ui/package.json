@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "description": "UI component library for HNG SDK",
   "private": false,
-  "main": "./dist/index.js",
   "module": "./dist/index.js",
+  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
